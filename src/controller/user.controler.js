@@ -23,131 +23,173 @@ const registerUser = async (req, res) =>
     }
 }
 
-function login(req, res){
-    const {email, password} = req.body;
-    const sql = `SELECT * FROM user WHERE email =? AND password = ?`;
-    const params = [email, password];
-    
-    connection.query(sql, params, function (err, result) {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Login incorrecto");
-      } else {
-        console.log(result);
-        if (result.length>0) {
-          console.log(result);
-          res.status(200).json(result);
-        } else {
-          res.status(401).send("Login incorrecto");
-        }
-      }
-    });
-}
+const login = async (req, res) =>
+{
+    try 
+    {
+      console.log(req.body);
+      let sql = `SELECT * FROM user WHERE email =? AND password = ?`
+      let params = [ req.body.email, req.body.password]
 
-function getStart(req, res) {
-    let respuesta = {error: true, codigo: 200, mensaje: 'Beginning point'};
-    response.send(respuesta);
-}
-
-function getBook(req, res) {
-  let id = req.params.id;
-  let sql = "SELECT * from book WHERE Id_book"
-  const params = [id];
-  let respuesta;
-
-  connection.query(sql, params, function (err, result) {
-    if (err) {
-      console.log(err);
-      response.status(500).send("No se ha podido obtener el libro");
-    } else {
+      
+      let [result] = await pool.query(sql, params)
       console.log(result);
-      if (result.length>0) {
-        res.status(200).json(result);
-      } else {
-        res.status(404).send("Libro no encontrado");
+      if(result.length == 0 )
+      {
+        res.send({error: true ,codigo:404 , mensaje:'usuario no encontrado'})
+      }else 
+      {
+        res.send({error:false , codigo:200 , mensaje: 'usuario encontrado' , data: result })
       }
+
     }
-  });
+    catch (error)
+    {
+        console.log(error);
+    }
 }
 
 
-function getAllBooks(req, res) {
-    let respuesta;
-    let id = req.query.id_user;
-    const params = [id];
-    let sql = "SELECT * from book WHERE id_user = ?"
+const getBook =  async(req, res) =>
+{
+  try 
+  {
+      let sql;
 
-    connection.query(sql, params, function (err, result) {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Error al obtener todos los libros");
-      } else {
-        console.log(result);
-        res.status(200).json(result);
-
+     
+      
+      sql = "SELECT * FROM book WHERE id_book = " +req.query.id + " AND id_user = " +req.query.id_user
+         
+      console.log(sql);
+      let [result] = await pool.query(sql)
+      console.log(result); 
+      if(result.length == 0)
+      res.send({error:true , codigo: 404, mensaje:"libro no encontrado"})
+      else{
+          res.send({error:false , codigo:200, mensaje:"libro encontado", data: result});
       }
-    });
+
+  } 
+  catch (error) 
+  {
+      console.log(error);
+  }
+ 
 }
 
 
-function postBook(req, res) {
-    let respuesta;
-    let sql = "INSERT into book (id_user, title, type, author, price, photo) VALUES (?, ?, ?, ?, ?, ?)";
-    const {id_user, title, type, author, price, photo} = req.body;
-    const params = [id_user, title, type, author, price, photo];
-    connection.query(sql, params, function (err, result) {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Error al agregar libro");
-      } else {
-        console.log(result);
-        if (result.insertId) {
-          res.status(201).json({ message: "Libro agregado", id: result.insertId });
-        } else {
-          res.status(500).send("Error al agregar libro");
-        }
+const getAllBooks = async(req, res)  =>
+{
+  try 
+  {
+      let sql;
+      if(req.query.id){
+          sql =  "SELECT * from book WHERE Id_book"+req.query.id
+         
       }
-    });
+      else{
+         console.log("libros no encontrados");
+      }
+
+      console.log(sql);
+      let [result] = await pool.query(sql)
+      console.log(result); 
+      if(result.length == 0)
+      res.send({error:true , codigo: 404, mensaje:"libros no encontrados "})
+      else{
+          res.send({error:false , codigo:200, mensaje:"libros encontado", data: result});
+      }
+
+  } 
+  catch (error) 
+  {
+      console.log(error);
+  }
+}
+
+const postBook = async (req, res) =>
+ {
+  try
+  {
+      console.log(req.body);
+      let sql = "INSERT INTO book ( id_user , title , type, author, price , photo)"+
+                                      "values ('"+ 
+                                                   req.body.id_user + "','"+
+                                                   req.body.title +"','"+
+                                                   req.body.type +" ',' "+
+                                                   req.body.author +" ',' "+
+                                                   req.body.price +" ',' "+
+                                                   req.body. photo +"')";
+
+      console.log(sql);
+      let [result] = await pool.query(sql)
+      console.log(result);
+
+      if(result.insertId)
+          res.send(String(result.insertId))
+      else
+          res.send("-1")
+  }
+  catch(err)
+  {
+      console.log(err);
+  }
 }
 
 
-function putBook(req, res) {
-  let sql = "UPDATE book SET id_user=?, title=?, type=?, author=?, price=?, photo=? WHERE id_book =?";
-  const {id_user, title, type, author, price, photo, id_book} = req.body;
-  const params = [ id_user, title, type, author, price, photo, id_book];
-  connection.query(sql, params, function (err, result) {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Error al modificar libro");
-      } else {
-        console.log(result);
-        if (result.affectedRows==1) {
-          res.status(200).json({ message: "Libro modificado"});
-        } else {
-          res.status(500).send("Error al modificar libro");
-        }
-      }
-    });
+const putBook = async (req, res) => {
+  
+  try
+  {
+      let sql;
+      console.log(req.body);
+      let parametros = [
+         
+          req.body.title,
+          req.body.author,
+          req.body.type,
+          req.body.price,
+          req.body.photo,
+          req.body.id_book,
+          req.body.id_user
+      ]
+
+
+       sql =  "UPDATE book SET title = COALESCE (?, title) , "+
+                  "author = COALESCE (?,author) , "+
+                  "type = COALESCE (?,type) , "+
+                  "price = COALESCE (?,price) , "+
+                  "photo = COALESCE (?,photo)  WHERE id_book = ? AND id_user= ? "
+                 
+
+      console.log(sql);
+      let [result] = await pool.query(sql,parametros)
+      res.send(result)
+  }
+  catch(err)
+  {
+      console.log(err);
+  }
 }
 
 
-function deleteBook(req, res) {
-    let id = req.params.id;
-    let sql = "DELETE FROM Book WHERE Id_book=?";
-    const params = [id];
-    connection.query(sql, params, function (err, result) {
-      if (err) {
-        console.log(err);
-        res.status(500).send("Error al eliminar libro");
-      } else {
-        console.log(result);
-        if (result.affectedRows==1) {
-          res.status(200).json({ message: "Libro borrado"});
-        } else {
-          res.status(500).send("Error al eliminar libro");
-        }
-      }
-    });
+const deleteBook = async (req, res) =>
+{
+  
+  try
+  {
+      console.log(req.body);
+
+      let params = [req.body.id]
+      let sql = "DELETE FROM book WHERE id_book = ?"
+      console.log(sql);
+      let [result] = await pool.query(sql,params)
+      res.send(result)
+  }
+  catch(err)
+  {
+      console.log(err);
+  }
 };
 
-module.exports = {registerUser, login, getStart, getBook, getAllBooks, postBook, putBook, deleteBook };
+module.exports = {registerUser, login, getBook, getAllBooks, postBook, putBook, deleteBook };
